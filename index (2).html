@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masters Pool 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --green-deep:#152a1e;
+  --gold:#c9a84c;
+  --gold-dim:rgba(201,168,76,0.22);
+  --cream:#f2ece0;
+  --cream-dim:rgba(242,236,224,0.55);
+  --border:rgba(201,168,76,0.22);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--green-deep);color:var(--cream);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 64px,rgba(255,255,255,0.012) 64px,rgba(255,255,255,0.012) 65px),
+  repeating-linear-gradient(90deg,transparent,transparent 64px,rgba(255,255,255,0.012) 64px,rgba(255,255,255,0.012) 65px);}
+.wrap{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:0 1rem 5rem;}
+
+/* HEADER */
+.header{text-align:center;padding:3.5rem 1rem 2.5rem;border-bottom:1px solid var(--gold-dim);margin-bottom:2rem;}
+.eyebrow{font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:0.6rem;}
+.header h1{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,7vw,3.6rem);font-weight:700;line-height:1.05;color:#fff;}
+.header h1 em{color:var(--gold);font-style:italic;}
+.header-sub{font-size:13px;color:var(--cream-dim);margin-top:0.8rem;font-weight:300;}
+
+/* NAV */
+.nav{display:flex;gap:3px;background:rgba(0,0,0,0.3);border-radius:12px;padding:4px;margin-bottom:2rem;}
+.nav-btn{flex:1;padding:10px 6px;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--cream-dim);background:transparent;cursor:pointer;transition:all .2s;}
+.nav-btn:hover:not(.active){color:var(--cream);background:rgba(255,255,255,0.06);}
+.nav-btn.active{background:var(--gold);color:var(--green-deep);}
+
+/* VIEWS */
+.view{display:none;animation:fadeIn .25s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;}}
+
+/* CARD */
+.card{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem;}
+.card-label{font-size:10px;letter-spacing:3.5px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;font-weight:500;}
+
+/* INPUTS */
+.field{margin-bottom:1.25rem;}
+.field label{display:block;font-size:13px;color:var(--cream-dim);margin-bottom:6px;}
+.field input[type=text],.field input[type=password]{width:100%;padding:11px 14px;background:rgba(0,0,0,0.35);border:1px solid var(--gold-dim);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s;}
+.field input:focus{border-color:var(--gold);}
+.field input::placeholder{color:rgba(242,236,224,0.3);}
+
+/* TIERS */
+.tier-block{margin-bottom:0.9rem;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.tier-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:rgba(0,0,0,0.25);cursor:pointer;user-select:none;}
+.tier-head-left{display:flex;align-items:center;gap:10px;}
+.tier-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:500;color:#fff;}
+.tier-range{font-size:11px;color:var(--cream-dim);}
+.tier-status{font-size:12px;font-weight:500;color:var(--cream-dim);}
+.tier-status.done{color:var(--gold);}
+.tier-chevron{font-size:10px;color:var(--cream-dim);transition:transform .2s;margin-left:8px;}
+.tier-block.open .tier-chevron{transform:rotate(180deg);}
+.tier-golfers{display:none;}
+.tier-block.open .tier-golfers{display:block;}
+.golfer-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background .15s;}
+.golfer-row:hover{background:rgba(255,255,255,0.04);}
+.golfer-row.selected{background:rgba(201,168,76,0.11);}
+.radio{width:17px;height:17px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.golfer-row.selected .radio{border-color:var(--gold);background:var(--gold);}
+.radio-dot{width:7px;height:7px;border-radius:50%;background:var(--green-deep);display:none;}
+.golfer-row.selected .radio-dot{display:block;}
+.g-name{flex:1;font-size:14px;color:var(--cream);}
+.golfer-row.selected .g-name{color:#fff;font-weight:500;}
+.g-meta{text-align:right;line-height:1.4;}
+.g-wr{font-size:11px;color:var(--cream-dim);}
+.g-odds{font-size:12px;font-weight:500;color:#d4b55e;}
+
+/* SUBMIT */
+.btn-main{width:100%;padding:14px;border:none;border-radius:10px;background:var(--gold);color:var(--green-deep);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s;letter-spacing:0.3px;}
+.btn-main:hover{background:#d4b55e;transform:translateY(-1px);}
+.btn-main:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* ALERTS */
+.alert{padding:11px 15px;border-radius:8px;font-size:13px;margin-bottom:1rem;display:none;line-height:1.5;}
+.alert.error{background:rgba(192,57,43,0.18);border:1px solid rgba(192,57,43,0.35);color:#ff8a7a;}
+.alert.success{background:rgba(74,155,111,0.18);border:1px solid rgba(74,155,111,0.35);color:#7ec99a;}
+.alert.show{display:block;}
+
+/* LOCKED / EMPTY */
+.locked-banner{background:rgba(201,168,76,0.1);border:1px solid var(--gold-dim);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:13px;color:var(--gold);text-align:center;}
+.empty{text-align:center;padding:3rem 1rem;color:var(--cream-dim);font-size:14px;}
+.empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:.4;}
+.picks-closed{text-align:center;padding:3rem 1rem;}
+.picks-closed h2{font-family:'Playfair Display',serif;font-size:1.8rem;color:#fff;margin-bottom:0.5rem;}
+.picks-closed p{font-size:14px;color:var(--cream-dim);}
+
+/* ENTRIES */
+.entries-grid{display:flex;flex-direction:column;gap:8px;}
+.entry-card{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.entry-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:rgba(0,0,0,0.2);cursor:pointer;}
+.entry-name{font-family:'Playfair Display',serif;font-size:16px;color:#fff;}
+.entry-detail{display:none;padding:0 14px 14px;}
+.entry-card.open .entry-detail{display:block;}
+.picks-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:10px;}
+.chip{background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;}
+.chip-left{}
+.chip-tier{font-size:10px;color:var(--cream-dim);letter-spacing:1px;text-transform:uppercase;}
+.chip-name{font-size:13px;color:var(--cream);margin-top:1px;}
+.chip-score{font-size:13px;font-weight:500;}
+
+/* LEADERBOARD */
+.lb-table{width:100%;border-collapse:collapse;}
+.lb-table th{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--cream-dim);font-weight:500;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;}
+.lb-table th:last-child{text-align:right;}
+.lb-table td{padding:12px 12px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:14px;}
+.lb-table td:last-child{text-align:right;}
+.lb-table tr:last-child td{border-bottom:none;}
+.lb-rank{font-family:'Playfair Display',serif;font-size:19px;color:var(--gold);width:36px;}
+.lb-name{color:#fff;font-weight:500;}
+.lb-picks{font-size:11px;color:var(--cream-dim);margin-top:2px;}
+.lb-score{font-size:16px;font-weight:500;}
+.under{color:#7ec99a;} .over{color:#ff8a7a;} .even{color:var(--cream-dim);}
+
+/* ADMIN */
+.admin-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;}
+.btn-sec{padding:9px 16px;border:1px solid var(--gold-dim);border-radius:8px;background:transparent;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;}
+.btn-sec:hover{background:rgba(201,168,76,0.15);border-color:var(--gold);}
+.btn-danger{border-color:rgba(192,57,43,0.4);color:#ff8a7a;}
+.btn-danger:hover{background:rgba(192,57,43,0.15);}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem;}
+.score-row{display:flex;align-items:center;gap:8px;}
+.score-row label{flex:1;font-size:13px;color:var(--cream-dim);}
+.score-row input{width:68px;padding:7px 10px;text-align:center;background:rgba(0,0,0,0.35);border:1px solid var(--gold-dim);border-radius:6px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;}
+.score-row input:focus{border-color:var(--gold);}
+.settings-info{font-size:12px;color:var(--cream-dim);margin-top:0.5rem;}
+
+/* SETUP OVERLAY */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem;}
+.setup-box{background:#1d3826;border:1px solid var(--gold-dim);border-radius:20px;padding:2rem;max-width:520px;width:100%;}
+.setup-box h2{font-family:'Playfair Display',serif;font-size:22px;color:#fff;margin-bottom:0.5rem;}
+.setup-box p{font-size:13px;color:var(--cream-dim);margin-bottom:1.5rem;line-height:1.7;}
+.setup-err{font-size:12px;color:#ff8a7a;margin-top:6px;display:none;}
+
+/* SPINNER */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media(max-width:480px){.score-grid{grid-template-columns:1fr;}.picks-chips{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+
+
+<div class="wrap">
+  <div class="header">
+    <div class="eyebrow">Augusta National · April 2026</div>
+    <h1>Masters Pool <em>2026</em></h1>
+    <div class="header-sub">Pick one golfer from each tier · lowest combined score to par wins</div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="showView('submit',this)">Submit Picks</button>
+    <button class="nav-btn" onclick="showView('entries',this)">Entries</button>
+    <button class="nav-btn" onclick="showView('leaderboard',this)">Leaderboard</button>
+    <button class="nav-btn" onclick="showView('admin',this)">Admin</button>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="view active" id="view-submit">
+    <div id="submit-open">
+      <div class="alert error" id="err-submit"></div>
+      <div class="alert success" id="ok-submit"></div>
+      <div class="card">
+        <div class="card-label">Your entry</div>
+        <div class="field">
+          <label>Your name</label>
+          <input type="text" id="entrant-name" placeholder="First and last name">
+        </div>
+      </div>
+      <div id="tiers-container"></div>
+      <button class="btn-main" id="submit-btn" onclick="submitEntry()">Submit my picks</button>
+    </div>
+    <div class="picks-closed" id="submit-closed" style="display:none">
+      <div style="font-size:3rem;margin-bottom:1rem">⛳</div>
+      <h2>Picks are locked</h2>
+      <p>The tournament has started — check the Leaderboard to follow along.</p>
+    </div>
+  </div>
+
+  <!-- ENTRIES -->
+  <div class="view" id="view-entries">
+    <div class="locked-banner" id="entries-banner">🔒 Entries are hidden until the tournament begins.</div>
+    <div id="entries-container"><div class="empty"><div class="empty-icon">📋</div>No entries yet.</div></div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="view" id="view-leaderboard">
+    <div class="card">
+      <div class="card-label">Live leaderboard</div>
+      <div id="lb-content"><div class="empty"><div class="empty-icon">🏆</div>Leaderboard appears once scores are entered by the admin.</div></div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="view" id="view-admin">
+    <div class="card" id="admin-login-card">
+      <div class="card-label">Admin access</div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="admin-pass" placeholder="Admin password" onkeydown="if(event.key==='Enter')adminLogin()">
+      </div>
+      <button class="btn-main" onclick="adminLogin()">Log in</button>
+      <div class="alert error" id="err-admin" style="margin-top:.75rem"></div>
+    </div>
+
+    <div id="admin-panel" style="display:none">
+      <div class="card">
+        <div class="card-label">Pool settings</div>
+        <div class="admin-btns">
+          <button class="btn-sec" onclick="toggleLock()">Toggle picks lock</button>
+          <button class="btn-sec" onclick="toggleReveal()">Toggle entries reveal</button>
+
+        </div>
+        <div class="settings-info" id="settings-info"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Golfer scores (to par)</div>
+        <p style="font-size:12px;color:var(--cream-dim);margin-bottom:1rem;line-height:1.6">Enter each golfer's cumulative score to par (e.g. -12, +3, 0). Negative = under par. Update as often as you like.</p>
+        <div id="score-inputs"></div>
+        <button class="btn-main" onclick="saveScores()">Save all scores</button>
+        <div class="alert success" id="ok-scores" style="margin-top:.75rem"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">All entries (<span id="entry-count">0</span>)</div>
+        <div id="admin-entries"></div>
+        <button class="btn-sec btn-danger" style="margin-top:1rem" onclick="deleteAll()">Delete all entries</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── TIER DATA ───────────────────────────────────────────────────
+const TIERS = [
+  { name:"Tier 1", golfers:[
+    {name:"Scottie Scheffler",wr:1,odds:"4/1"},{name:"Rory McIlroy",wr:2,odds:"7/1"},
+    {name:"Bryson DeChambeau",wr:24,odds:"10/1"},{name:"Jon Rahm",wr:29,odds:"12/1"},
+    {name:"Ludvig Aberg",wr:18,odds:"16/1"},{name:"Tommy Fleetwood",wr:4,odds:"18/1"},
+    {name:"Xander Schauffele",wr:6,odds:"18/1"},{name:"Collin Morikawa",wr:8,odds:"22/1"},
+    {name:"Cameron Young",wr:3,odds:"27/1"},{name:"Matt Fitzpatrick",wr:5,odds:"30/1"}
+  ]},
+  { name:"Tier 2", golfers:[
+    {name:"Justin Rose",wr:7,odds:"30/1"},{name:"Patrick Reed",wr:23,odds:"30/1"},
+    {name:"Chris Gotterup",wr:9,odds:"35/1"},{name:"Hideki Matsuyama",wr:14,odds:"35/1"},
+    {name:"Viktor Hovland",wr:22,odds:"35/1"},{name:"Brooks Koepka",wr:165,odds:"38/1"},
+    {name:"Robert MacIntyre",wr:11,odds:"40/1"},{name:"Justin Thomas",wr:15,odds:"40/1"},
+    {name:"Tyrrell Hatton",wr:31,odds:"40/1"},{name:"Jordan Spieth",wr:63,odds:"40/1"}
+  ]},
+  { name:"Tier 3", golfers:[
+    {name:"Shane Lowry",wr:32,odds:"45/1"},{name:"Patrick Cantlay",wr:34,odds:"50/1"},
+    {name:"Ben Griffin",wr:16,odds:"55/1"},{name:"Akshay Bhatia",wr:20,odds:"60/1"},
+    {name:"Si Woo Kim",wr:30,odds:"60/1"},{name:"Jake Knapp",wr:42,odds:"60/1"},
+    {name:"Corey Conners",wr:43,odds:"60/1"},{name:"Russell Henley",wr:10,odds:"66/1"},
+    {name:"Min Woo Lee",wr:25,odds:"66/1"},{name:"Jason Day",wr:41,odds:"66/1"}
+  ]},
+  { name:"Tier 4", golfers:[
+    {name:"Adam Scott",wr:53,odds:"66/1"},{name:"Max Homa",wr:156,odds:"66/1"},
+    {name:"Cameron Smith",wr:">200",odds:"66/1"},{name:"Sepp Straka",wr:12,odds:"70/1"},
+    {name:"Sam Burns",wr:33,odds:"70/1"},{name:"Daniel Berger",wr:38,odds:"70/1"},
+    {name:"Marco Penge",wr:37,odds:"80/1"},{name:"Gary Woodland",wr:51,odds:"80/1"},
+    {name:"Sungjae Im",wr:70,odds:"80/1"},{name:"Wyndham Clark",wr:75,odds:"80/1"}
+  ]},
+  { name:"Tier 5", golfers:[
+    {name:"J.J. Spaun",wr:13,odds:"90/1"},{name:"Jacob Bridgeman",wr:17,odds:"90/1"},
+    {name:"Harris English",wr:21,odds:"90/1"},{name:"Dustin Johnson",wr:">200",odds:"90/1"},
+    {name:"Alexander Noren",wr:19,odds:"100/1"},{name:"Matthew McCarty",wr:46,odds:"100/1"},
+    {name:"Sergio Garcia",wr:">200",odds:"100/1"},{name:"Maverick McNealy",wr:27,odds:"110/1"},
+    {name:"Ryan Gerard",wr:28,odds:"110/1"},{name:"Keegan Bradley",wr:26,odds:"120/1"}
+  ]},
+  { name:"Tier 6", golfers:[
+    {name:"Kurt Kitayama",wr:35,odds:"120/1"},{name:"Nicolai Hojgaard",wr:36,odds:"120/1"},
+    {name:"Ryan Fox",wr:48,odds:"120/1"},{name:"Aaron Rai",wr:40,odds:"130/1"},
+    {name:"Harry Hall",wr:59,odds:"130/1"},{name:"John Keefer",wr:60,odds:"130/1"},
+    {name:"Rasmus Neergaard-Petersen",wr:68,odds:"130/1"},{name:"Tom McKibbin",wr:102,odds:"140/1"},
+    {name:"Sam Stevens",wr:44,odds:"150/1"},{name:"Brian Harman",wr:50,odds:"150/1"},
+    {name:"Rasmus Hojgaard",wr:55,odds:"150/1"},{name:"Carlos Ortiz",wr:157,odds:"150/1"},
+    {name:"Nicolas Echavarria",wr:39,odds:"200/1"},{name:"Andrew Novak",wr:47,odds:"200/1"},
+    {name:"Michael Kim",wr:56,odds:"200/1"},{name:"Casey Jarvis",wr:69,odds:"200/1"},
+    {name:"Aldrich Potgieter",wr:77,odds:"200/1"},{name:"Max Greyserman",wr:62,odds:"250/1"},
+    {name:"Nick Taylor",wr:66,odds:"250/1"},{name:"Hao-Tong Li",wr:81,odds:"250/1"},
+    {name:"Bubba Watson",wr:">200",odds:"250/1"},{name:"Kristoffer Reitan",wr:49,odds:"300/1"},
+    {name:"Sami Valimaki",wr:57,odds:"300/1"},{name:"Davis Riley",wr:116,odds:"300/1"},
+    {name:"Charl Schwartzel",wr:">200",odds:"350/1"},{name:"Michael Brennan",wr:45,odds:"400/1"},
+    {name:"Brian Campbell",wr:111,odds:"400/1"},{name:"Zach Johnson",wr:">200",odds:"400/1"},
+    {name:"Angel Cabrera",wr:">200",odds:"500/1"},{name:"Danny Willett",wr:">200",odds:"500/1"},
+    {name:"Fred Couples",wr:">200",odds:"1000/1"},{name:"Mike Weir",wr:">200",odds:"1000/1"},
+    {name:"Vijay Singh",wr:">200",odds:"1000/1"},{name:"Brandon Holtz",wr:">200",odds:"2000/1"},
+    {name:"Ethan Fang",wr:">200",odds:"2000/1"},{name:"Fifa Laopakdee",wr:">200",odds:"2000/1"},
+    {name:"Jackson Herrington",wr:">200",odds:"2000/1"},{name:"Jose Maria Olazabal",wr:">200",odds:"2000/1"},
+    {name:"Mason Howell",wr:">200",odds:"2000/1"},{name:"Mateo Pulcini",wr:">200",odds:"2000/1"},
+    {name:"Naoyuki Kataoka",wr:">200",odds:"2000/1"}
+  ]}
+];
+
+const ALL_GOLFERS = TIERS.flatMap(t=>t.golfers.map(g=>g.name));
+
+// ─── STATE ──────────────────────────────────────────────────────
+let sb = null;
+let picks = {};
+let adminIn = false;
+let settings = {locked:false, revealed:false};
+let scores = {};
+
+// ─── SETUP ──────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://miptspeueflwrihpnlwx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_G_XdR3Osw2AcADD7qSjoqQ_7VtETK4F';
+const ADMIN_PASSWORD = 'masters2026';
+
+function getCfg(){ return {pass: ADMIN_PASSWORD}; }
+
+function resetSetup(){ alert('Credentials are hardcoded in this version.'); }
+
+function boot(url,key){
+  sb=window.supabase.createClient(url,key);
+  buildTiers();
+  loadSettings();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  boot(SUPABASE_URL, SUPABASE_KEY);
+});
+
+// ─── NAV ────────────────────────────────────────────────────────
+function showView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name!=='leaderboard'&&lbRefreshTimer){clearInterval(lbRefreshTimer);lbRefreshTimer=null;}
+  if(name==='entries')loadEntries();
+  if(name==='leaderboard')loadLeaderboard();
+  if(name==='admin'&&adminIn)loadAdminEntries();
+}
+
+// ─── SETTINGS ───────────────────────────────────────────────────
+async function loadSettings(){
+  if(!sb)return;
+  const {data}=await sb.from('settings').select('*');
+  if(data){
+    data.forEach(r=>{
+      if(r.key==='locked')settings.locked=r.value==='true';
+      if(r.key==='revealed')settings.revealed=r.value==='true';
+      if(r.key==='scores'){try{scores=JSON.parse(r.value);}catch(e){}}
+    });
+  }
+  applySettings();
+}
+
+function applySettings(){
+  document.getElementById('submit-open').style.display=settings.locked?'none':'block';
+  document.getElementById('submit-closed').style.display=settings.locked?'block':'none';
+  document.getElementById('entries-banner').style.display=settings.revealed?'none':'block';
+}
+
+async function setSetting(k,v){await sb.from('settings').upsert({key:k,value:String(v)},{onConflict:'key'});}
+
+async function toggleLock(){
+  settings.locked=!settings.locked;
+  await setSetting('locked',settings.locked);
+  applySettings();updateSettingsInfo();
+}
+async function toggleReveal(){
+  settings.revealed=!settings.revealed;
+  await setSetting('revealed',settings.revealed);
+  applySettings();updateSettingsInfo();
+  if(settings.revealed)loadEntries();
+}
+function updateSettingsInfo(){
+  document.getElementById('settings-info').textContent=
+    `Picks: ${settings.locked?'🔒 Locked':'🟢 Open'} · Entries: ${settings.revealed?'👁 Visible to all':'🙈 Hidden until reveal'}`;
+}
+
+// ─── TIERS UI ───────────────────────────────────────────────────
+function safeId(s){return s.replace(/[^a-zA-Z0-9]/g,'_');}
+
+function buildTiers(){
+  const c=document.getElementById('tiers-container');
+  c.innerHTML='';
+  TIERS.forEach((tier,ti)=>{
+    const block=document.createElement('div');
+    block.className='tier-block';
+    block.id='tb'+ti;
+    const firstOdds=tier.golfers[0].odds;
+    const lastOdds=tier.golfers[tier.golfers.length-1].odds;
+    block.innerHTML=`
+      <div class="tier-head" onclick="toggleTier(${ti})">
+        <div class="tier-head-left">
+          <span class="tier-name">${tier.name}</span>
+          <span class="tier-range">${firstOdds} – ${lastOdds}</span>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="tier-status" id="ts${ti}">Pick 1</span>
+          <span class="tier-chevron">▼</span>
+        </div>
+      </div>
+      <div class="tier-golfers" id="tg${ti}">
+        ${tier.golfers.map(g=>`
+          <div class="golfer-row" id="gr${ti}_${safeId(g.name)}" onclick="pickGolfer(${ti},${JSON.stringify(g.name)})">
+            <div class="radio"><div class="radio-dot"></div></div>
+            <div class="g-name">${g.name}</div>
+            <div class="g-meta"><div class="g-wr">WR ${g.wr}</div><div class="g-odds">${g.odds}</div></div>
+          </div>`).join('')}
+      </div>`;
+    c.appendChild(block);
+  });
+  toggleTier(0);
+}
+
+function toggleTier(ti){document.getElementById('tb'+ti).classList.toggle('open');}
+
+function pickGolfer(ti,name){
+  const prev=picks[ti];
+  if(prev){
+    const pr=document.getElementById('gr'+ti+'_'+safeId(prev));
+    if(pr)pr.classList.remove('selected');
+  }
+  picks[ti]=name;
+  const row=document.getElementById('gr'+ti+'_'+safeId(name));
+  if(row)row.classList.add('selected');
+  const ts=document.getElementById('ts'+ti);
+  ts.textContent=name.split(' ').pop();
+  ts.className='tier-status done';
+  document.getElementById('tb'+ti).classList.remove('open');
+  if(ti+1<TIERS.length&&!picks[ti+1])toggleTier(ti+1);
+}
+
+// ─── SUBMIT ─────────────────────────────────────────────────────
+async function submitEntry(){
+  const name=document.getElementById('entrant-name').value.trim();
+  const errEl=document.getElementById('err-submit');
+  const okEl=document.getElementById('ok-submit');
+  hide(errEl);hide(okEl);
+  if(!name){showAlert(errEl,'Please enter your name.');return;}
+  if(Object.keys(picks).length<TIERS.length){
+    showAlert(errEl,`Please pick from every tier (${Object.keys(picks).length}/${TIERS.length} done).`);return;
+  }
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Submitting...';
+  const {error}=await sb.from('entries').insert([{name,picks:JSON.stringify(picks),submitted_at:new Date().toISOString()}]);
+  btn.disabled=false;btn.textContent='Submit my picks';
+  if(error){showAlert(errEl,'Error: '+error.message);return;}
+  showAlert(okEl,`🎉 Entry submitted! Good luck, ${name.split(' ')[0]}!`);
+  document.getElementById('entrant-name').value='';
+  picks={};buildTiers();
+}
+
+// ─── ENTRIES ─────────────────────────────────────────────────────
+async function loadEntries(){
+  const c=document.getElementById('entries-container');
+  if(!settings.revealed){
+    c.innerHTML='<div class="empty"><div class="empty-icon">🔒</div>Entries hidden until the tournament begins.</div>';return;
+  }
+  c.innerHTML='<div class="empty"><span class="spinner"></span>Loading...</div>';
+  // Try to get live scores
+  await fetchLiveScores();
+  const {data}=await sb.from('entries').select('*').order('submitted_at',{ascending:true});
+  if(!data||!data.length){c.innerHTML='<div class="empty"><div class="empty-icon">📋</div>No entries yet.</div>';return;}
+  const grid=document.createElement('div');grid.className='entries-grid';
+  data.forEach(e=>{
+    const ep=JSON.parse(e.picks);
+    const tot=calcTotal(ep);
+    const card=document.createElement('div');card.className='entry-card';
+    card.innerHTML=`
+      <div class="entry-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="entry-name">${e.name}</div>
+        <div class="lb-score ${sc(tot)}">${fmt(tot)}</div>
+      </div>
+      <div class="entry-detail">
+        <div class="picks-chips">
+          ${TIERS.map((t,ti)=>{
+            const g=ep[ti];const s=scores[g];
+            return `<div class="chip">
+              <div><div class="chip-tier">${t.name}</div><div class="chip-name">${g||'—'}</div></div>
+              ${s!==undefined?`<div class="chip-score ${sc(s)}">${fmt(s)}</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+  c.innerHTML='';c.appendChild(grid);
+}
+
+// ─── LEADERBOARD ─────────────────────────────────────────────────
+let lbRefreshTimer = null;
+
+async function fetchLiveScores(){
+  try {
+    const res = await fetch('/api/scores');
+    if(!res.ok) return false;
+    const data = await res.json();
+    if(data.scores && Object.keys(data.scores).length > 0){
+      scores = data.scores;
+      return true;
+    }
+    return false;
+  } catch(e){ return false; }
+}
+
+async function loadLeaderboard(){
+  const c=document.getElementById('lb-content');
+  if(!settings.revealed){c.innerHTML='<div class="empty">Visible once entries are revealed.</div>';return;}
+
+  c.innerHTML='<div class="empty"><span class="spinner"></span>Loading live scores...</div>';
+
+  // Try to fetch live scores from ESPN
+  const gotLive = await fetchLiveScores();
+
+  if(!gotLive && !Object.keys(scores).length){
+    c.innerHTML='<div class="empty"><div class="empty-icon">🏆</div>Live scores will appear once the tournament begins Thursday.</div>';
+    return;
+  }
+
+  const {data}=await sb.from('entries').select('*');
+  if(!data||!data.length){c.innerHTML='<div class="empty">No entries.</div>';return;}
+  const ranked=data.map(e=>{const ep=JSON.parse(e.picks);return{name:e.name,picks:ep,total:calcTotal(ep)};}).sort((a,b)=>a.total-b.total);
+
+  const updatedEl = gotLive ? `<div style="font-size:11px;color:var(--cream-dim);margin-bottom:1rem;text-align:right">⟳ Live · updates every 2 min</div>` : '';
+
+  let html=updatedEl+'<table class="lb-table"><thead><tr><th></th><th>Entrant</th><th style="text-align:right">Score</th></tr></thead><tbody>';
+  ranked.forEach((e,i)=>{
+    html+=`<tr>
+      <td class="lb-rank">${i+1}</td>
+      <td><div class="lb-name">${e.name}</div><div class="lb-picks">${Object.values(e.picks).join(' · ')}</div></td>
+      <td class="lb-score ${sc(e.total)}">${fmt(e.total)}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  c.innerHTML=html;
+
+  // Auto-refresh every 2 minutes while on leaderboard tab
+  if(lbRefreshTimer) clearInterval(lbRefreshTimer);
+  lbRefreshTimer=setInterval(()=>{
+    const lbView=document.getElementById('view-leaderboard');
+    if(lbView.classList.contains('active')) loadLeaderboard();
+    else clearInterval(lbRefreshTimer);
+  }, 120000);
+}
+
+function calcTotal(ep){let t=0;Object.values(ep).forEach(g=>{if(scores[g]!==undefined)t+=scores[g];});return t;}
+function fmt(n){if(n===undefined||isNaN(n)||n===0)return'E';return n>0?'+'+n:String(n);}
+function sc(n){if(!n||n===0)return'even';return n<0?'under':'over';}
+
+// ─── ADMIN ───────────────────────────────────────────────────────
+function adminLogin(){
+  const input=document.getElementById('admin-pass').value;
+  const {pass}=getCfg();
+  if(input===pass){
+    adminIn=true;
+    document.getElementById('admin-login-card').style.display='none';
+    document.getElementById('admin-panel').style.display='block';
+    buildScoreInputs();loadAdminEntries();updateSettingsInfo();
+  }else{showAlert(document.getElementById('err-admin'),'Incorrect password.');}
+}
+
+function buildScoreInputs(){
+  const c=document.getElementById('score-inputs');
+  const grid=document.createElement('div');grid.className='score-grid';
+  ALL_GOLFERS.forEach(name=>{
+    const row=document.createElement('div');row.className='score-row';
+    row.innerHTML=`<label>${name}</label><input type="number" id="sc_${safeId(name)}" value="${scores[name]!==undefined?scores[name]:''}" placeholder="0">`;
+    grid.appendChild(row);
+  });
+  c.innerHTML='';c.appendChild(grid);
+}
+
+async function saveScores(){
+  ALL_GOLFERS.forEach(name=>{
+    const el=document.getElementById('sc_'+safeId(name));
+    scores[name]=el&&el.value!==''?parseInt(el.value,10):0;
+  });
+  await setSetting('scores',JSON.stringify(scores));
+  showAlert(document.getElementById('ok-scores'),'✓ Scores saved!');
+}
+
+async function loadAdminEntries(){
+  const c=document.getElementById('admin-entries');
+  c.innerHTML='<span class="spinner"></span>';
+  const {data}=await sb.from('entries').select('*').order('submitted_at',{ascending:true});
+  if(!data||!data.length){c.innerHTML='<div style="font-size:13px;color:var(--cream-dim)">No entries yet.</div>';return;}
+  document.getElementById('entry-count').textContent=data.length;
+  c.innerHTML=data.map(e=>{
+    const ep=JSON.parse(e.picks);
+    return`<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <strong style="color:#fff;font-size:14px">${e.name}</strong>
+      <div style="font-size:12px;color:var(--cream-dim);margin-top:2px">${Object.values(ep).join(' · ')}</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteAll(){
+  if(!confirm('Delete ALL entries? Cannot be undone.'))return;
+  await sb.from('entries').delete().neq('id',0);
+  loadAdminEntries();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────
+function showAlert(el,msg){el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),5000);}
+function hide(el){el.classList.remove('show');}
+</script>
+</body>
+</html>
